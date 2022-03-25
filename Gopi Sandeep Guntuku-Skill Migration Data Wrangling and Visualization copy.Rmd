@@ -1,0 +1,235 @@
+---
+title: "Assignment1-Guntuku-Skill Migration Data Wrangling and Visualization"
+author: "Gopi Sandeep Guntuku"
+date: "3/9/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+## **Migration of LinkedIn members at the country-skill level, 2015-2019**
+
+##### **Data Source:**
+
+Data has been sourced from the citation "Talent Migration Data" by World Bank Group & LinkedIn Corporation, licensed under CC BY 4.0., published by The World Bank at  https://datacatalog.worldbank.org/search/dataset/0038044/Talent-Migration---LinkedIn-Data-
+
+Table downloaded from Overview tab "CSV: Skill Migration". Data has been taken for all countries and categories for the years 2015-2019.
+
+##### **Background:**
+
+This dataset is part of the LinkedIn - World Bank Group partnership, which helps governments and researchers understand rapidly evolving labor markets with detailed and dynamic insights.
+
+##### **Characteristics:**
+
+The main characteristic of this dataset is that it allows leaders to benchmark and compare labor markets across the world; analyze skills and migration; and leverage real-time data to make policy changes.
+
+
+##### **Variables:**
+##### **The original dataset has the following variables:**
+
++ **Country Code and Country Name :**  *Every country name and corresponding country code over the world has been included in the data.*
+
++ **Income Category:** *The Income Category based on the country concerned.*
+
++ **Region:** *The region based on the country concerned.*
+
++ **Skill Group ID, Category and Name:** *The ID, Category and Name of the Skill Group based on the migration of LinkedIn members.*
+
++ **net_per_10K_2015, net_per_10K_2016,...net_per_10K_2019:** *Discrete values of years for which the respective data has been collected.*
+
+
+### **Code**
+##### **Loading the libraries required in the project:**
+
+```{r }
+library(RColorBrewer)
+library(tidyverse)
+library(ggthemes)
+library(kableExtra)
+```
+
+### **Data Cleaning:**
+
+Data needs to be cleaned and made tidy before performing any visualizations.
+
+To avoid scientific notation and Read the data from csv file.
+
+```{r }
+options(scipen=10)
+data <- read_csv(file="Assignment1-Guntuku-Skill Migration Data Wrangling and Visualization.csv")
+```
+
+Dropping the null columns created with indexes 13 till 29 and Dropping rows/records with NA values.
+
+Here, I have used kable for displaying the top 10 rows as the dataset has 17000 rows.
+
+```{r }
+data <- data %>%
+  select( -13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,-25,-26,-27,-28,-29)
+data <- na.omit(data)
+kbl(head(data, n=10)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+Created a new column "Net_per_10K_Mean_Value" as the mean of values in Net_per_10K years columns and renamed the columns to years. 
+
+Showing the first 10 records using kable.
+
+```{r }
+data$Net_per_10K_Mean_Value <- apply(data[,c(8:12)], 1, mean)
+colnames(data)[8] <- "2015"
+colnames(data)[9] <- "2016"
+colnames(data)[10] <- "2017"
+colnames(data)[11] <- "2018"
+colnames(data)[12] <- "2019"
+kbl(head(data, n=10)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### **Data Wrangling:**
+#### **The dataset is untidy as it violates the tidy data principles because:**
+
++ Each variable does not have its own column.
++ Each observation does not have its own row.
+
+For tidying the dataset below steps are followed:
+
+#### **Using pivot_longer:**
++ We have column names 2015, 2016, 2017, 2018, 2019 that contain values and not variables. 
+
++ Hence, Using PIVOT LONGER, created two new columns named "Year" and "Net_per_10K_Value" for tidying the dataset.
+
+Using kable to display the first ten records in the tidy dataset.
+
+```{r }
+data <- data %>% 
+  pivot_longer(c(`2015`, `2016`, `2017`, `2018`,`2019`), names_to = "year", values_to = "Net_per_10K_Value")
+kbl(head(data, n=10)) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+**The data is now completely tidy and ready for data visualization:**
+
++ We have removed NA columns and NA values 
++ Made sure that every variable has its own column using pivot_longer
++ Made sure that every observation has its own row using pivot_longer
+
+
+### **Data Visualization:**
+
+Created a vector of 4 countries having different income categories and updated the values into datafil for better visualizations.
+
+```{r }
+Cntry <- c('United States','Afghanistan','Bangladesh','Jamaica')
+datafil <- data[data$country_name %in% Cntry,]
+```
+
+### **1. Scatter Plot of Year vs Migration of LinkedIn members based on Countries**
+
+We are making use of ggplot library in the tidyverse package along with point function and facets for showing the variation of Net Value of skilled members migrated over the years in 4 different countries faceted by income category.
+
+```{r }
+ggplot(data = datafil) +
+  geom_point(mapping = aes(x = year, y = Net_per_10K_Value, color=country_name)) +
+  facet_grid(~ wb_income) +
+  ggtitle("Migration of LinkedIn Members over the years based on Countries") +
+  xlab("Year") +
+  ylab("Net Value of Skilled Members migrating over the years")
+```
+
+_From the above scatter plot, we observe that, skill migration is more predominant in country Afghanistan and less predominant in country United States._
+
+
+### **2. Box Plot of Skill Group Category vs Mean value of LinkedIn Members based on Country **
+
+We are making use of ggplot library in the tidyverse package along with boxplot and color brewer from RColorBrewer package for showing the variation of Mean Value of skilled members migrated over the years per Skill Category in specific Countries.
+
+```{r }
+
+ggplot(data = datafil, 
+       mapping = aes(x = skill_group_category , 
+                     y = Net_per_10K_Mean_Value, fill=country_name)) +
+  geom_boxplot(varwidth = T) + 
+  coord_flip() +
+  ggtitle("Mean Value of Skilled Members migrating over 
+          the years per Skill Group Category in specific Countries") +
+  xlab("Skill Group Category") +
+  ylab("Mean Value of Skilled Members migrating over the years") +
+  scale_fill_brewer(palette = "Blues")
+
+```
+
+
+_From the above box plot, we observe that,_
+
++ *United States has more skill migration in Tech Skills and Disruptive Tech Skills.*
+
++ *Afghanistan has more skill migration in Specialized Industry Skills and Business Skills.*
+
+### **3. Jitter Plot of Year vs Migration of LinkedIn members based on Regions **
+
+We are making use of ggplot library in the tidyverse package and google docs theme in the ggthemes library for showing the variation of Migration of skilled members over the years based on different regions.
+
+```{r }
+ggplot(data = data, 
+       mapping = aes(x = Net_per_10K_Value , 
+                     y = year, size=Net_per_10K_Value), color = wb_region) +
+  geom_jitter(aes(col = wb_region)) + 
+  ggtitle("Migration of LinkedIn Members 
+          over the years based on Regions") +
+  xlab("Net Value of Skilled Members migrating over the years") +
+  ylab("Year") +
+  theme_gdocs() +
+  scale_color_gdocs()
+```
+
+_From the above Jitter plot, we observe that, skill migration is more predominant in Europe and Central Asia region and less predominant in Latin America & Caribbean region._
+
+### **4. Bar Plot of Income Category vs Mean value of Net gain or loss of LinkedIn Members **
+
+We are making use of ggplot library in the tidyverse package and economist theme in the ggthemes library for showing the variation of Income Category and Mean Value of skilled members migrated over the years.
+
+```{r }
+ggplot(data = datafil, 
+       mapping = aes(x = wb_income, 
+                     y = Net_per_10K_Mean_Value)) +
+  geom_bar(stat="identity", width = 0.5, fill="tomato2") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+  ggtitle("Income Category variation of Mean migrated members") +
+  xlab("Income Category") +
+  ylab("Mean value of migrated LinkedIn Members with a given skill per 10K") +
+  theme_economist() +
+  scale_color_economist()
+```
+
+
+### **5. Bar Plot of Income Category vs Net gain or loss of LinkedIn Members **
+
+We are making use of ggplot library in the tidyverse package economist theme in the ggthemes library for showing the variation of Income Category and Net Value of skilled members migrated over the years.
+
+```{r }
+ggplot(data = datafil, 
+       mapping = aes(x = wb_income, 
+                     y = Net_per_10K_Value)) +
+  geom_bar(stat="identity", width = 0.5, fill="tomato2") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+  ggtitle("Income Category variation of Net migrated members") +
+  xlab("Income Category") +
+  ylab("Net gain or loss of LinkedIN Members with a given skill per 10K") +
+  theme_economist() +
+  scale_color_economist()
+```
+
+_From the above two bar plots, we observe that, skill migration is more predominant in Low Income groups  and less predominant in High Income Groups._
+
+### **Conclusion:**
+
+**1. Skill migration is more predominant in country Afghanistan and less predominant in country United States.**
+
+**2. Skill migration is more predominant in Europe and Central Asia region and less predominant in Latin America & Caribbean region.**
+
+**3. Skill migration is more predominant in Low Income groups  and less predominant in High Income Groups.**
+
+**4. United States has more skill migration in Tech Skills and Disruptive Tech Skills.**
+
+**5. Afghanistan has more skill migration in Specialized Industry Skills and Business Skills.**
